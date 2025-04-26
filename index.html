@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心理测试</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #3498db;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .question-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .rating-options {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        .rating-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #3498db;
+            background: white;
+            color: #3498db;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rating-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        .rating-btn.selected {
+            background: #3498db;
+            color: white;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #27ae60;
+        }
+        @media (max-width: 600px) {
+            .rating-options {
+                flex-wrap: wrap;
+            }
+            .rating-btn {
+                margin: 5px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>情感-认知图式简要量表</h1>
+        <div class="test-intro">
+            <p>以下是人们可能用来描述自己的陈述，请阅读每个陈述</p>
+            <p>根据它在过去一年中与你的契合程度进行评分。</p>
+            <p>当你不确定时，你的答案应该基于你的情感感受，而不是你认为的真相。</p>
+            <p>有几项问题询问你与父母或恋爱对象的关系。</p>
+            <p>如果这些人中有人已经去世，请根据他们活着时的关系回答这些问题。</p>
+            <p>如果你目前没有伴侣，但过去有过，请根据你最近的重要恋爱对象回答这个问题。</p>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="questionsContainer"></div>
+        <button class="btn" id="submitBtn">提交测试</button>
+    </div>
+
+    <script>
+        // 问题数据
+        const questions = [
+            // 情感剥夺 (1-5)
+            "我没有一个人来培养我，与我分享自己，或者关心发生在我身上的每件事",
+            "没有人可以给我足够的爱和关心",
+            "没有人可以让我依靠，没有人能给与足够的感情支持",  // 修改为"没有人可以让我依靠，没有人能给与足够的感情支持"
+            "我觉得没有人真正理解我",
+            "我没有人可以分享我最私人的感受和经历",
+            
+            // 放弃 (6-10)
+            "我发现自己会紧紧抓住我亲近的人，因为我害怕他们会离开我",
+            "我害怕亲近的人会离开我",
+            "我担心亲近的人会抛弃我",
+            "我害怕被亲近的人抛弃",
+            "我担心亲近的人会不再爱我",
+            
+            // 不信任 (11-15)
+            "我觉得人们会利用我",
+            "我觉得人们会欺骗我",
+            "我觉得人们会伤害我",
+            "我觉得人们会背叛我",
+            "我觉得人们会操纵我",
+            
+            // 社交孤立/疏离 (16-20)
+            "我不合群",
+            "我觉得自己与他人不同",
+            "我觉得自己不属于任何群体",
+            "我觉得自己与他人格格不入",
+            "我觉得自己是个局外人",
+            
+            // 缺陷/不可爱 (21-25)
+            "我所渴望的男人/女人，一旦看到我的缺点或瑕疵，就不可能再爱我",
+            "我觉得自己不值得被爱",
+            "我觉得自己有根本性的缺陷",
+            "我觉得自己不够好",
+            "我觉得自己不可爱",
+            
+            // 未发展的自我 (26-30)
+            "我在工作(或学校)中做的几乎任何事情都不如其他人做得好",
+            "我觉得自己不如别人有能力",
+            "我觉得自己不如别人聪明",
+            "我觉得自己不如别人有才华",
+            "我觉得自己不如别人成功",
+            
+            // 无能/依赖 (31-35)
+            "我觉得自己无法在日常生活独立生活",
+            "我觉得自己无法照顾自己",
+            "我觉得自己无法做出好的决定",
+            "我觉得自己无法处理日常事务",
+            "我觉得自己需要依赖他人才能生存",
+            
+            // 易受伤害或疾病 (36-40)
+            "我似乎无法摆脱某种不好的事情即将发生的预感",
+            "我担心会发生灾难性的事件",
+            "我担心自己会生病或受伤",
+            "我担心会发生财务灾难",
+            "我担心会发生意外事故",
+            
+            // 共生 (41-45)
+            "我一直无法像同龄人那样与父母分开",
+            "我觉得自己与父母过于紧密",
+            "我觉得自己无法独立于父母",
+            "我觉得自己与父母没有足够的界限",
+            "我觉得自己需要父母的认可才能做决定",  // 已修改为"父母"
+            
+            // 屈从 (46-50)
+            "我认为如果我做我想做的事，我只会自找麻烦",
+            "我觉得表达自己的需求会导致冲突",
+            "我觉得坚持自己的意见会导致被拒绝",
+            "我觉得表达自己的感受会导致他人不高兴",
+            "我觉得为自己争取会导致他人不喜欢我",
+            
+            // 自我牺牲 (51-55)
+            "我通常是照顾我亲近的人的人",
+            "我经常把别人的需求放在自己之前",
+            "我经常忽视自己的需求去满足他人",
+            "我经常为他人付出而忽视自己",
+            "我经常牺牲自己来帮助他人",
+            
+            // 情感抑制 (56-60)
+            "我过于自我意识，无法向他人表现出积极的情感(例如，爱意，表现出关心)",
+            "我很难表达爱意",
+            "我很难表达积极的情感",
+            "我很难表现出脆弱",
+            "我很难表达自己的情感需求",
+            
+            // 吹毛求疵 (61-65)
+            "我必须在大多数事情上做到最好;我不能接受第二好",
+            "我对自己的表现要求极高",
+            "我对自己的标准非常严格",
+            "我无法接受自己的不完美",
+            "我对自己非常苛刻",
+            
+            // 权利/优越感 (66-70)
+            "当我想要从别人那里得到一些东西时，我很难接受'不'作为答案",
+            "我觉得自己应该得到特殊待遇",
+            "我觉得自己的需求比别人的更重要",
+            "我觉得规则不适用于我",
+            "我觉得自己比别人优越",
+            
+            // 自我控制/自律不足 (71-75)
+            "我似乎无法约束自己完成大多数日常或无聊的任务",
+            "我很难坚持完成无聊的任务",
+            "我很难控制自己的冲动",
+            "我很难延迟满足",
+            "我很难遵守规则和纪律",
+            
+            // 钦佩/寻求认可 (76-80)
+            "有钱和认识重要的人让我觉得自己有价值",
+            "他人的认可让我觉得自己有价值",
+            "成功让我觉得自己有价值",
+            "地位让我觉得自己有价值",
+            "外表让我觉得自己有价值",
+            
+            // 悲观/担忧 (81-85)
+            "即使事情似乎进展顺利，我也觉得这只是暂时的",
+            "我倾向于关注事情的负面方面",
+            "我预期事情会变糟",
+            "我很难看到事情的积极面",
+            "我对未来感到悲观",
+            
+            // 自我惩罚 (86-90)
+            "我经常想起我犯过的错误，并对自己感到生气",
+            "当事情出错时，我会责怪自己",
+            "我觉得自己应该为错误受到惩罚",
+            "我对自己很苛刻",
+            "我很难原谅自己的错误"
+        ];
+
+        // 初始化测试
+        function initTest() {
+            const questionsContainer = document.getElementById('questionsContainer');
+            
+            questions.forEach((question, index) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.dataset.questionIndex = index;
+                
+                const questionText = document.createElement('p');
+                questionText.textContent = `${index + 1}. ${question}`;
+                card.appendChild(questionText);
+                
+                // 添加评分标注
+                const ratingDesc = document.createElement('div');
+                ratingDesc.className = 'rating-description';
+                ratingDesc.innerHTML = `
+                    <p>1=我完全不是这样</p>
+                    <p>2=大多情况不符合</p>
+                    <p>3=稍微符合</p>
+                    <p>4=比较正确</p>
+                    <p>5=大多数情况符合</p>
+                    <p>6=完美符合我</p>
+                `;
+                card.appendChild(ratingDesc);
+                
+                const ratingOptions = document.createElement('div');
+                ratingOptions.className = 'rating-options';
+                
+                // 创建1-6分的评分按钮
+                for (let i = 1; i <= 6; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'rating-btn';
+                    btn.dataset.rating = i;
+                    btn.textContent = i;
+                    
+                    btn.addEventListener('click', function() {
+                        // 移除同一问题中其他按钮的选中状态
+                        const siblings = this.parentNode.querySelectorAll('.rating-btn');
+                        siblings.forEach(sib => sib.classList.remove('selected'));
+                        
+                        // 添加选中状态
+                        this.classList.add('selected');
+                        
+                        // 保存答案
+                        saveAnswer(index, i);
+                        
+                        // 更新进度
+                        updateProgress();
+                    });
+                    
+                    ratingOptions.appendChild(btn);
+                }
+                
+                card.appendChild(ratingOptions);
+                questionsContainer.appendChild(card);
+            });
+            
+            // 加载已保存的答案
+            loadSavedAnswers();
+            updateProgress();
+        }
+
+        // 保存答案到本地存储
+        function saveAnswer(questionIndex, rating) {
+            let answers = JSON.parse(localStorage.getItem('psychologyTestAnswers') || '{}');
+            answers[questionIndex] = rating;
+            localStorage.setItem('psychologyTestAnswers', JSON.stringify(answers));
+        }
+
+        // 从本地存储加载已保存的答案
+        function loadSavedAnswers() {
+            const answers = JSON.parse(localStorage.getItem('psychologyTestAnswers') || '{}');
+            
+            Object.keys(answers).forEach(questionIndex => {
+                const rating = answers[questionIndex];
+                const card = document.querySelector(`.question-card[data-question-index="${questionIndex}"]`);
+                if (card) {
+                    const btn = card.querySelector(`.rating-btn[data-rating="${rating}"]`);
+                    if (btn) {
+                        btn.classList.add('selected');
+                    }
+                }
+            });
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            const answers = JSON.parse(localStorage.getItem('psychologyTestAnswers') || '{}');
+            const answeredCount = Object.keys(answers).length;
+            const progress = (answeredCount / questions.length) * 100;
+            
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        // 提交按钮事件处理
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            // 先清除可能存在的旧结果
+            const oldChart = document.getElementById('resultChart');
+            if (oldChart) {
+                oldChart.remove();
+            }
+            
+            // 计算各维度分数
+            const answers = JSON.parse(localStorage.getItem('psychologyTestAnswers') || '{}');
+            
+            // 检查是否所有问题都已回答
+            if (Object.keys(answers).length !== questions.length) {
+                alert('请完成所有问题后再提交测试');
+                return;
+            }
+
+            // 创建结果容器
+            const resultContainer = document.createElement('div');
+            resultContainer.id = 'testResult';
+            document.querySelector('.container').innerHTML = '';
+            document.querySelector('.container').appendChild(resultContainer);
+
+            // 显示结果
+            let resultHTML = `
+                <h2>测试结果</h2>
+                <div style="margin: 0 auto; max-width: 800px; height: 500px;">
+                    <canvas id="resultChart"></canvas>
+                </div>
+                <div style="margin-top: 30px;">
+                    <table class="result-table" style="width: 100%; border-collapse: collapse;">
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="padding: 8px; border: 1px solid #ddd;">维度</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">平均分</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">解释</th>
+                        </tr>
+            `;
+            
+            // 添加维度解释定义
+            const dimensionExplanations = {
+                "情感剥夺": "预期自己的情感需求(如爱、关心、关注、理解等)不会被充分满足",
+                "放弃": "害怕被重要他人抛弃或失去情感连接，导致过度依赖或紧抓关系",
+                "不信任": "认为他人会伤害、欺骗、利用或操纵自己，导致难以信任他人",
+                "社交孤立": "认为自己与他人不同或格格不入，难以融入群体",
+                "缺陷/不可爱": "认为自己有根本缺陷或不值得被爱，害怕亲密关系暴露这些缺陷",
+                "失败": "相信自己现在是失败的，以后也肯定会失败，感到自己在成就方面都不如同伴",  // 修改解释
+                "无能/依赖": "认为自己无法独立处理日常生活事务，需要依赖他人",
+                "易受伤害": "持续担心灾难性事件(如疾病、事故、财务灾难)即将发生",
+                "未发展的自我": "缺乏清晰的自我认同，过度倾向于通过他人来定义自己的身份和价值",  // 修改为"过度倾向于通过他人来定义自己的身份和价值"
+                "屈从": "为避免愤怒、冲突或被抛弃而压抑自己的需求和偏好",
+                "自我牺牲": "过度关注满足他人需求而忽视自己，对他人痛苦有着过度责任感",
+                "情感抑制": "过度控制自发的情绪表达，特别是愤怒和积极情绪",
+                "吹毛求疵": "坚持不现实的高标准，导致慢性不满或自我批评",
+                "权利感": "认为自己比他人特殊或有权获得特殊待遇，忽视他人需求",
+                "自律不足": "难以容忍挫折或控制冲动，优先考虑短期满足",
+                "寻求认可": "过度倾向于以外部认可来维持自尊，忽视内在价值标准",  // 修改为"过度倾向于以外部认可来维持自尊"
+                "悲观": "倾向于关注生活的负面方面，低估自己应对困难的能力",
+                "自我惩罚": "认为自己应该为错误受到严厉惩罚，难以自我宽恕"
+            };
+
+            // 计算各维度分数
+            const dimensions = {
+                "情感剥夺": [0, 18, 36, 54, 72],
+                "放弃": [1, 19, 37, 55, 73],
+                "不信任": [2, 20, 38, 56, 74],
+                "社交孤立": [3, 21, 39, 57, 75],
+                "缺陷/不可爱": [4, 22, 40, 58, 76],
+                "失败": [5, 23, 41, 59, 77],  // 修改为"失败"
+                "无能/依赖": [6, 24, 42, 60, 78],
+                "易受伤害": [7, 25, 43, 61, 79],
+                "未发展的自我": [8, 26, 44, 62, 80],  // 修改为"未发展的自我"
+                "屈从": [9, 27, 45, 63, 81],
+                "自我牺牲": [10, 28, 46, 64, 82],
+                "情感抑制": [11, 29, 47, 65, 83],
+                "吹毛求疵": [12, 30, 48, 66, 84],
+                "权利感": [13, 31, 49, 67, 85],
+                "自律不足": [14, 32, 50, 68, 86],
+                "寻求认可": [15, 33, 51, 69, 87],
+                "悲观": [16, 34, 52, 70, 88],
+                "自我惩罚": [17, 35, 44, 71, 89]
+            };
+            
+            let labels = [];
+            let data = [];
+            for (const [dimension, indexes] of Object.entries(dimensions)) {
+                const scores = indexes.map(i => parseInt(answers[i]) || 0);
+                const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                labels.push(dimension);
+                data.push(average.toFixed(2));
+                
+                resultHTML += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${dimension}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${average.toFixed(2)}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${dimensionExplanations[dimension] || ''}</td>
+                    </tr>
+                `;
+            }
+            
+            resultHTML += `
+                    </table>
+                </div>
+                <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+                    <p><strong>分数说明：</strong>本测试暂无中国常模数据，如果平均分≥4可能考虑有情感创伤，平均分≥5可能考虑就医或者寻求专业人士帮助，平均分为6请寻求专业精神卫生人员帮助，本测试应当在有专业人士辅助的情况下测试，如无专业人员辅助，结果仅供参考。</p>
+                    <p style="text-align: right; margin-top: 20px;">本测试由雾钟心理制作</p>
+                </div>
+            `;
+            
+            // 将结果HTML插入到容器中
+            resultContainer.innerHTML = resultHTML;
+
+            // 绘制雷达图
+            const ctx = document.getElementById('resultChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '各维度平均分',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 5,
+                        pointRadius: 4,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 1,
+                            suggestedMax: 6,
+                            ticks: {
+                                stepSize: 1,
+                                backdropColor: 'rgba(255, 255, 255, 0.75)'
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 添加窗口大小变化时的重绘监听
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        });
+
+        // 更新进度条
+        function updateProgress() {
+            const answers = JSON.parse(localStorage.getItem('psychologyTestAnswers') || '{}');
+            const answeredCount = Object.keys(answers).length;
+            const progress = (answeredCount / questions.length) * 100;
+            
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        // 初始化测试
+        initTest();
+    </script>
+</body>
